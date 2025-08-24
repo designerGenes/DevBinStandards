@@ -1,0 +1,37 @@
+# Color definitions using Zsh prompt expansions
+# Foreground (text) colors
+export FG_TEAL='%F{81}'
+export FG_SOFT_VIOLET='%F{111}'
+export FG_TAN='%F{180}'
+export FG_STEEL_BLUE='%F{67}'
+export FG_MUTED_TURQUOISE='%F{109}'
+export FG_PALE_PEACH='%F{181}'
+export FG_LILAC='%F{146}'
+export FG_SUNSET_ORANGE='%F{202}'
+export FG_SKY_BLUE='%F{117}'
+export FG_WARM_GRAY='%F{245}'
+export FG_WHITE='%F{255}'
+export FG_BLACK='%F{0}'
+export FG_COBALT='%F{27}'
+export FG_LIME_GREEN='%F{154}'
+export FG_ROSE='%F{204}'
+
+# Background colors
+export BG_TEAL='%K{81}'
+export BG_SOFT_VIOLET='%K{111}'
+export BG_TAN='%K{180}'
+export BG_STEEL_BLUE='%K{67}'
+export BG_MUTED_TURQUOISE='%K{109}'
+export BG_PALE_PEACH='%K{181}'
+export BG_LILAC='%K{146}'
+export BG_SUNSET_ORANGE='%K{202}'
+export BG_SKY_BLUE='%K{117}'
+export BG_WARM_GRAY='%K{245}'
+export BG_WHITE='%K{255}'
+export BG_BLACK='%K{0}'
+export BG_COBALT='%K{27}'
+export BG_LIME_GREEN='%K{154}'
+export BG_ROSE='%K{204}'
+
+# Reset to default
+export RESET='%f%k'
