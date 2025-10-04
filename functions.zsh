@@ -46,10 +46,10 @@ addAlias() {
 
   local alias_line="alias $key=\"$value\""
 
-  echo "$alias_line" >>"$HOME/DEV/bin/aliases.sh"
+  echo "$alias_line" >>"$HOME/DEV/bin/aliases.zsh"
 
   # Quietly re-source the file (no output)
-  source "$HOME/DEV/bin/aliases.sh" >/dev/null 2>&1
+  source "$HOME/DEV/bin/aliases.zsh" >/dev/null 2>&1
 
   echo "Alias '$key' added and reloaded."
 }
