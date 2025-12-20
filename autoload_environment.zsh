@@ -24,6 +24,74 @@ _mask_api_value() {
   fi
 }
 
+# Resolve special values: REF:path:key or DEFER_PARENT
+_resolve_env_value() {
+  local key="$1"
+  local val="$2"
+  if [[ "$val" == \\* ]]; then
+    # escaped, remove \
+    val="${val:1}"
+    echo "$val"
+  elif [[ "$val" == REF:* ]]; then
+    local ref="${val#REF:}"
+    local path="${ref%%:*}"
+    local refkey="${ref#*:}"
+    if [[ "$path" != /* || "$path" != $HOME* ]]; then
+      print -P "${FG_RED}Invalid path: $path${RESET}" >&2
+      return 1
+    fi
+    if [[ ! -f "$path" ]]; then
+      print -P "${FG_RED}Referenced .env not found: $path${RESET}" >&2
+      return 1
+    fi
+    local resolved=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      if [[ $line == $refkey=* ]]; then
+        resolved="${line#*=}"
+        break
+      fi
+    done < "$path"
+    if [[ -z "$resolved" ]]; then
+      print -P "${FG_RED}Key $refkey not found in $path${RESET}" >&2
+      return 1
+    fi
+    # strip quotes
+    resolved="${resolved%\"}"
+    resolved="${resolved#\"}"
+    resolved="${resolved%\'}"
+    resolved="${resolved#\'}"
+    echo "$resolved"
+  elif [[ "$val" == DEFER_PARENT ]]; then
+    local dir="$PWD"
+    local depth=0
+    while [[ "$dir" != "/" && "$dir" != "$HOME" && $depth -lt 5 ]]; do
+      dir="$(dirname "$dir")"
+      if [[ -f "$dir/.env" ]]; then
+        local resolved=""
+        while IFS= read -r line || [[ -n "$line" ]]; do
+          if [[ $line == $key=* ]]; then
+            resolved="${line#*=}"
+            break
+          fi
+        done < "$dir/.env"
+        if [[ -n "$resolved" ]]; then
+          resolved="${resolved%\"}"
+          resolved="${resolved#\"}"
+          resolved="${resolved%\'}"
+          resolved="${resolved#\'}"
+          echo "$resolved"
+          return 0
+        fi
+      fi
+      ((depth++))
+    done
+    print -P "${FG_RED}Key $key not found in parent directories${RESET}" >&2
+    return 1
+  else
+    echo "$val"
+  fi
+}
+
 # Load .env into current shell; print only NEW/CHANGED keys (colorized via colors.zsh)
 loadenv_verbose_masked() {
   local file="${1:-.env}"
@@ -50,20 +118,24 @@ loadenv_verbose_masked() {
       val="${val:1:${#val}-2}"
     fi
 
+    # resolve special values
+    local resolved_val="$(_resolve_env_value "$key" "$val")" || continue
+
     # value before change
     eval "cur=\${$key}"
 
-    if [[ "$cur" != "$val" ]]; then
-      export "$key=$val"
+    if [[ "$cur" != "$resolved_val" ]]; then
+      export "$key=$resolved_val"
 
       # Secret-ish keys: contains PRIVATE or API_KEY or APIKEY
       if [[ "$key" == *PRIVATE* || "$key" == *API_KEY* || "$key" == *APIKEY* ]]; then
-        masked="$(_mask_api_value "$val")"
+        masked="$(_mask_api_value "$resolved_val")"
         # key yellow, value white
         print -P "loaded ${FG_SUNSET_ORANGE}${key}${RESET}=${FG_WHITE}${masked}${RESET}"
       else
         # key green, value white
-        print -P "loaded ${FG_LIME_GREEN}${key}${RESET}=${FG_WHITE}${val}${RESET}"
+        # print -P "loaded ${FG_LIME_GREEN}${key}${RESET}=${FG_WHITE}${resolved_val}${RESET}"
+        print -P "loaded ${FG_LIME_GREEN}${key}${RESET}"
       fi
     fi
   done <"$file"

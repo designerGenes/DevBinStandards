@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import httpx
-from dotenv import load_dotenv
 import typer
 from pydantic import BaseModel, Field
 from rich.console import Console
@@ -181,8 +180,19 @@ def search(
         try:
             # Change to project directory to load .env file
             os.chdir(project_dir)
-            # Load environment variables from .env file
-            load_dotenv()
+            # Use zsh to source the autoload script and print the key
+            import subprocess
+            # We need to unset TAVILY_API_KEY first in the subshell to ensure loadenv actually loads it
+            # and we redirect stderr to /dev/null to avoid capturing the "loaded ..." messages
+            result = subprocess.run(
+                ["zsh", "-c", "unset TAVILY_API_KEY; source $HOME/DEV/bin/autoload_environment.zsh; loadenv_verbose_masked .env >/dev/null 2>&1; echo $TAVILY_API_KEY"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                # The stdout might still contain some noise if not perfectly silenced, so we take the last line
+                output_lines = result.stdout.strip().split('\n')
+                os.environ["TAVILY_API_KEY"] = output_lines[-1].strip()
         finally:
             # Always change back to the original directory
             os.chdir(original_cwd)
