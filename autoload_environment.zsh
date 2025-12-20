@@ -87,6 +87,17 @@ _resolve_env_value() {
     done
     print -P "${FG_RED}Key $key not found in parent directories${RESET}" >&2
     return 1
+  elif [[ "$val" == \$\{*\} ]]; then
+    # Command substitution: ${command}
+    local cmd="${val:2:${#val}-3}"
+    local output
+    output=$(eval "$cmd" 2>/dev/null)
+    if [[ $? -eq 0 ]]; then
+      echo "$output"
+    else
+      print -P "${FG_RED}Command failed: $cmd${RESET}" >&2
+      return 1
+    fi
   else
     echo "$val"
   fi
