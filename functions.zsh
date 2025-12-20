@@ -67,9 +67,19 @@ gb() {
   # Get current branch name
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
   if [[ -z "$branch" ]]; then
-    echo "Not in a git repository."
+    # Only show error if not in raw mode
+    if [[ "$1" != "-r" && "$1" != "--raw" ]]; then
+      echo "Not in a git repository."
+    fi
     return 1
+  fi
+
+  # Check for raw flag
+  if [[ "$1" == "-r" || "$1" == "--raw" ]]; then
+    echo "$branch"
+    return 0
   fi
 
   # Define gentle, visually consistent colors
