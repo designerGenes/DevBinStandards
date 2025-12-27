@@ -209,3 +209,30 @@ gpN() {
   git push -u origin "$branch" && echo "Remote branch '$branch' created and tracking set."
 }
 
+# Lazy Load Conda
+# Only adds Conda to PATH when you type 'conda' or 'mamba'
+conda() {
+    echo "Initializing Conda..."
+    
+    # 1. Source the official Miniforge activation scripts
+    # This replaces the messy hook code you saw earlier
+    if [ -f "/Users/jadennation/miniforge3/etc/profile.d/conda.sh" ]; then
+        . "/Users/jadennation/miniforge3/etc/profile.d/conda.sh"
+    fi
+
+    if [ -f "/Users/jadennation/miniforge3/etc/profile.d/mamba.sh" ]; then
+        . "/Users/jadennation/miniforge3/etc/profile.d/mamba.sh"
+    fi
+
+    # 2. Unset these temporary functions so the real commands take over
+    unset -f conda
+    unset -f mamba
+
+    # 3. Run the command you actually typed
+    conda "$@"
+}
+
+# Optional: Make 'mamba' trigger the same loading
+mamba() {
+    conda "$@"
+}
