@@ -233,6 +233,6 @@ conda() {
 }
 
 # Optional: Make 'mamba' trigger the same loading
-mamba() {
-    conda "$@"
-}
+#mamba() {
+#    conda "$@"
+#}
