@@ -28,7 +28,7 @@ _mask_api_value() {
 _resolve_env_value() {
   local key="$1"
   local val="$2"
-  if [[ "$val" == \\* ]]; then
+  if [[ "$val" == \* ]]; then
     # escaped, remove \
     val="${val:1}"
     echo "$val"
@@ -64,7 +64,7 @@ _resolve_env_value() {
   elif [[ "$val" == DEFER_PARENT ]]; then
     local dir="$PWD"
     local depth=0
-    while [[ "$dir" != "/" && "$dir" != "$HOME" && $depth -lt 5 ]]; do
+    while [[ "$dir" != / && "$dir" != "$HOME" && $depth -lt 5 ]]; do
       dir="$(dirname "$dir")"
       if [[ -f "$dir/.env" ]]; then
         local resolved=""
@@ -133,7 +133,7 @@ loadenv_verbose_masked() {
     local resolved_val="$(_resolve_env_value "$key" "$val")" || continue
 
     # value before change
-    eval "cur=\${$key}"
+    eval "cur=\"${key}\""
 
     if [[ "$cur" != "$resolved_val" ]]; then
       export "$key=$resolved_val"
@@ -161,4 +161,3 @@ autoload -Uz add-zsh-hook
 add-zsh-hook chpwd _env_try_load_on_cd
 # Also run once at shell start for the current dir
 _env_try_load_on_cd
-# ---------------------------------------------------------------

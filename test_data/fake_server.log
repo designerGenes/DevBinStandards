@@ -1,0 +1,10 @@
+2023-10-27 10:00:01 [INFO] Server started at http://localhost:8080
+2023-10-27 10:00:05 [INFO] User login from 192.168.1.10
+2023-10-27 10:00:06 [WARN] High memory usage detected: 85%
+2023-10-27 10:01:20 [ERROR] Connection timed out for request ID: req_abc123
+2023-10-27 10:02:15 [INFO] User login from 10.0.0.5
+2023-10-27 10:03:00 [ERROR] Database connection failed: Connection refused
+2023-10-27 10:03:01 [CRITICAL] System shutting down due to DB failure
+2023-10-27 10:03:05 [INFO] User logout: user_id=55
+2023-10-27 10:04:00 [WARN] Disk space low on /var/log
+2023-10-27 10:05:00 [INFO] Heartbeat received from 192.168.1.20

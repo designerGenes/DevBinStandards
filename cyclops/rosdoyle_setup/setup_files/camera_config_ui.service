@@ -1,0 +1,15 @@
+[Unit]
+Description=Pi Camera Configuration Web UI
+After=network.target
+Wants=pi_camera_capture.service
+
+[Service]
+Type=simple
+User=jadennation
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/bin/python3 /usr/local/bin/camera_config_ui.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
