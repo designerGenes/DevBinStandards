@@ -1,7 +1,0 @@
-id,username,email,role,status
-1,jdoe,jdoe@example.com,admin,active
-2,asmith,asmith@test.co.uk,editor,active
-3,bwayne,batman@gotham.city,user,inactive
-4,ckent,superman@dailyplanet.com,user,active
-5,pparker,spidey@webs.net,moderator,active
-6,sstark,tony@stark.io,admin,active
