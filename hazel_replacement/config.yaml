@@ -1,0 +1,80 @@
+# Hazel Replacement Configuration
+# ================================
+# Define rules for automatic file organization
+
+# Global settings
+settings:
+  log_level: INFO
+  log_file: ~/.hazel_replacement/hazel.log
+  poll_interval: 1  # seconds between checks (for fallback polling)
+
+# Watch rules - each rule defines a directory to watch and actions to take
+watch_rules:
+  - name: "Downloads Drive Organizer"
+    watch_directory: "~/Downloads/drive"
+    enabled: true
+    
+    # Domain patterns that trigger redirect to tmp
+    # Files downloaded from these domains go to tmp instead of their type folder
+    redirect_domains:
+      - "jumploads.com"
+      - "emload.com"
+      - "dropapk.to"
+      - "filepup.net"
+      - "k2s.cc"
+      - "kshared.com"
+      # Add more patterns here - partial matches work (e.g., "fb" matches "facebook.com")
+    
+    # File type rules - applied if no domain redirect matches
+    type_rules:
+      video:
+        extensions:
+          - .mp4
+          - .mkv
+          - .avi
+          - .mov
+          - .wmv
+          - .flv
+          - .webm
+          - .m4v
+          - .mpeg
+          - .mpg
+          - .3gp
+        destination: "vid"  # relative to watch_directory
+      
+      image:
+        extensions:
+          - .jpg
+          - .jpeg
+          - .png
+          - .gif
+          - .bmp
+          - .tiff
+          - .tif
+          - .webp
+          - .heic
+          - .heif
+          - .svg
+          - .ico
+          - .raw
+          - .cr2
+          - .nef
+        destination: "img"  # relative to watch_directory
+      
+      # You can add more type rules here:
+      # audio:
+      #   extensions:
+      #     - .mp3
+      #     - .wav
+      #     - .flac
+      #   destination: "audio"
+      
+      # documents:
+      #   extensions:
+      #     - .pdf
+      #     - .doc
+      #     - .docx
+      #   destination: "docs"
+    
+    # Where to move files from redirect domains
+    redirect_destination: "tmp"  # relative to watch_directory

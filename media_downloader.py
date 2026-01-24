@@ -84,7 +84,10 @@ def _download_file(url: str, headers: dict):
         total_size = int(response.headers.get('content-length', 0))
         block_size = 1024
         
-        filename = url.split('/')[-1].split('?')[0] # Clean filename
+        import os
+        download_dir = "/Users/jadennation/Downloads/drive/vid"
+        os.makedirs(download_dir, exist_ok=True)
+        filename = os.path.join(download_dir, url.split('/')[-1].split('?')[0]) # Clean filename
         
         with open(filename, 'wb') as f, tqdm(
             total=total_size, unit='iB', unit_scale=True, desc=filename, colour="green"
@@ -117,78 +120,103 @@ def download(media_url: str):
     _download_file(media_url, headers={})
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
-def curl(ctx: typer.Context):
+def curl(ctx: typer.Context, file_path: str = typer.Option(None, "--file", "-f", help="Path to a file containing multiple curl commands, one per line.")):
     """
     Parses a raw cURL command and downloads the media.
     """
     import re
     print("[cyan]Parsing cURL command...[/cyan]")
     
-    curl_command = " ".join(ctx.args)
-    
-    # Improved parsing logic using regular expressions
-    # This is more robust to handle various quoting styles.
-    
-    url = None
-    headers = {}
-
-    # Extract URL first - it's typically the first non-option argument
-    # This regex looks for 'curl' followed by an optional quoted string.
-    url_match = re.search(r"curl\s+'([^']+)'", curl_command)
-    if url_match:
-        url = url_match.group(1)
+    commands_to_process = []
+    if file_path:
+        try:
+            with open(file_path, 'r') as f:
+                file_content = f.read()
+                # Split content by one or more blank lines to get individual curl command blocks
+                raw_command_blocks = re.split(r'\n\s*\n+', file_content.strip())
+                
+                for block in raw_command_blocks:
+                    # For each block, remove line continuation backslashes and newlines
+                    # to form a single-line curl command
+                    single_line_cmd = re.sub(r'\\\s*\n\s*', ' ', block).strip()
+                    if single_line_cmd: # Ensure it's not an empty string
+                        commands_to_process.append(single_line_cmd)
+                
+        except FileNotFoundError:
+            print(f"[bold red]Error: File not found at {file_path}[/bold red]")
+            return
     else:
-        # Fallback for double quotes
-        url_match = re.search(r'curl\s+"([^"]+)"', curl_command)
+        commands_to_process = [" ".join(ctx.args)]
+
+    for curl_command in commands_to_process:
+        if not curl_command.strip():
+            continue
+
+        print(f"[bold blue]Processing command:[/bold blue] {curl_command[:100]}...") # Show a snippet of the command
+        
+        # Improved parsing logic using regular expressions
+        # This is more robust to handle various quoting styles.
+        
+        url = None
+        headers = {}
+
+        # Extract URL first - it's typically the first non-option argument
+        # This regex looks for 'curl' followed by an optional quoted string.
+        url_match = re.search(r"curl\s+'([^']+)'", curl_command)
         if url_match:
             url = url_match.group(1)
+        else:
+            # Fallback for double quotes
+            url_match = re.search(r'curl\s+"([^"]+)"', curl_command)
+            if url_match:
+                url = url_match.group(1)
 
-    if not url:
-        # Fallback for unquoted URL
-        parts = shlex.split(curl_command)
-        if len(parts) > 1 and parts[0] == 'curl':
-            if parts[1].startswith('http'):
-                url = parts[1]
+        if not url:
+            # Fallback for unquoted URL
+            parts = shlex.split(curl_command)
+            if len(parts) > 1 and parts[0] == 'curl':
+                if parts[1].startswith('http'):
+                    url = parts[1]
 
-    if not url:
-        # Last resort: find the first http URL in the command
-        url_match = re.search(r"https?://[^\s'\"_]+", curl_command)
-        if url_match:
-            url = url_match.group(0)
+        if not url:
+            # Last resort: find the first http URL in the command
+            url_match = re.search(r"https?://[^\s'\"_]+", curl_command)
+            if url_match:
+                url = url_match.group(0)
 
-    if not url:
-        print("[bold red]Could not extract URL from curl command.[/bold red]")
-        return
+        if not url:
+            print("[bold red]Could not extract URL from curl command.[/bold red]")
+            return
 
-    # Extract headers, supporting both single and double quotes
-    header_matches = re.findall(r"-H\s+'([^']+)'", curl_command)
-    for header in header_matches:
-        if ': ' in header:
-            key, value = header.split(': ', 1)
-            headers[key.strip()] = value.strip()
+        # Extract headers, supporting both single and double quotes
+        header_matches = re.findall(r"-H\s+'([^']+)'", curl_command)
+        for header in header_matches:
+            if ': ' in header:
+                key, value = header.split(': ', 1)
+                headers[key.strip()] = value.strip()
 
-    header_matches_double = re.findall(r'-H\s+"([^"]+)"', curl_command)
-    for header in header_matches_double:
-        if ': ' in header:
-            key, value = header.split(': ', 1)
-            headers[key.strip()] = value.strip()
+        header_matches_double = re.findall(r'-H\s+"([^"]+)"', curl_command)
+        for header in header_matches_double:
+            if ': ' in header:
+                key, value = header.split(': ', 1)
+                headers[key.strip()] = value.strip()
 
-    # Extract cookies from -b
-    cookie_match = re.search(r"-b\s+'([^']+)'", curl_command)
-    if cookie_match:
-        headers['Cookie'] = cookie_match.group(1)
-    else:
-        cookie_match = re.search(r'-b\s+"([^"]+)"', curl_command)
+        # Extract cookies from -b
+        cookie_match = re.search(r"-b\s+'([^']+)'", curl_command)
         if cookie_match:
             headers['Cookie'] = cookie_match.group(1)
-        
-    # Remove range header to ensure we download the full file
-    if 'range' in headers:
-        headers.pop('range')
-        print("[yellow]Removed 'range' header to download the full file.[/yellow]")
+        else:
+            cookie_match = re.search(r'-b\s+"([^"]+)"', curl_command)
+            if cookie_match:
+                headers['Cookie'] = cookie_match.group(1)
+            
+        # Remove range header to ensure we download the full file
+        if 'range' in headers:
+            headers.pop('range')
+            print("[yellow]Removed 'range' header to download the full file.[/yellow]")
 
-    print(f"[cyan]Extracted URL:[/] {url}")
-    _download_file(url, headers=headers)
+        print(f"[cyan]Extracted URL:[/] {url}")
+        _download_file(url, headers=headers)
 
 if __name__ == "__main__":
     app()

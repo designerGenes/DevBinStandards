@@ -1,0 +1,82 @@
+# Set terminal type
+export TERM="${TERM:-xterm-256color}"
+
+# Custom color prompt setup
+machine_color='%F{111}'
+reset_color='%f'
+
+# Completion: only once!
+autoload -Uz compinit && compinit
+
+# Aliases and functions
+alias k='kubectl'
+alias pip="python3 -m pip"
+
+# History settings
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh_history
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+
+# Source envman PATH configuration (for webi-installed tools)
+[ -f ~/.config/envman/PATH.env ] && source ~/.config/envman/PATH.env
+
+# Add local bin to PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+# Source config files from DEV/bin
+source "$HOME/DEV/bin/aliases.zsh"
+source "$HOME/DEV/bin/custom_path.zsh"
+source "$HOME/DEV/bin/constants.zsh"
+source "$HOME/DEV/bin/functions.zsh"
+source "$HOME/DEV/bin/colors.zsh"
+source "$HOME/DEV/bin/autoload_environment.zsh"
+
+# Tailscale completion
+command -v tailscale &>/dev/null && source <(tailscale completion zsh)
+
+# fd is installed as fdfind on Ubuntu
+alias fd="fdfind"
+
+# bat is installed as batcat on Ubuntu
+alias bat="batcat"
+
+# LunarVim alias
+alias lvim="$HOME/.local/bin/lvim"
+
+# Ensure ssh-agent is running and key is added only once per session
+export SSH_KEY="$HOME/.ssh/id_ed25519"
+
+# Check if agent is running
+if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+  eval "$(ssh-agent -s)" > /dev/null
+fi
+
+# Check if key is already added (if key exists)
+if [ -f "$SSH_KEY" ]; then
+  if ! ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$SSH_KEY" 2>/dev/null | awk '{print $2}')"; then
+    ssh-add "$SSH_KEY" 2>/dev/null
+  fi
+fi
+
+# Prompt (set last)
+PROMPT='[ %n @ '${machine_color}'%m'${reset_color}' ] %1~ > '
+
+# Emacs-style keybindings for line editing
+bindkey -e  # Use emacs keybindings
+bindkey '^U' backward-kill-line   # Ctrl+U: delete from cursor to beginning of line
+bindkey '^K' kill-line            # Ctrl+K: delete from cursor to end of line
+bindkey '^A' beginning-of-line    # Ctrl+A: move to beginning of line
+bindkey '^E' end-of-line          # Ctrl+E: move to end of line
+bindkey '^W' backward-kill-word   # Ctrl+W: delete word backward
+bindkey '^Y' yank                 # Ctrl+Y: paste (yank) killed text
+
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# UV environment
+[ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"
+
+# Go path
+command -v go &>/dev/null && export PATH="$PATH:$(go env GOBIN 2>/dev/null)"
