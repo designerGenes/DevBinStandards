@@ -110,16 +110,10 @@ def display_json(response: SearchResponse):
 
 def display_table(response: SearchResponse):
     """Display response as a table."""
-    table = Table(title=f"Search Results for: {response.query}")
-    table.add_column("Title", style="bold cyan", no_wrap=True)
-    table.add_column("URL", style="blue")
-    table.add_column("Score", justify="right")
-    table.add_column("Content", max_width=80)
-
-    for result in response.results:
-        table.add_row(result.title, result.url, f"{result.score:.4f}", result.content)
-
-    console.print(table)
+    for i, result in enumerate(response.results, 1):
+        console.print(f"\n[bold]{i}. {result.title}[/bold] (Score: {result.score:.4f})")
+        console.print(f"   [blue]{result.url}[/blue]")
+        console.print(f"   [dim]{result.content}[/dim]")
 
     if response.answer:
         console.print(Panel.fit(Text(response.answer, style="green"), title="Answer"))
@@ -145,9 +139,10 @@ def display_tree(response: SearchResponse):
 
 @app.command()
 def search(
-    query: str = typer.Argument(..., help="The search query"),
+    query: Optional[str] = typer.Argument(None, help="The search query"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="Tavily API key"),
     format: str = typer.Option("table", "--format", help="Output format: json, table, tree"),
+    use_env: bool = typer.Option(False, "--use-env", help="Use SEARCH_QUERY environment variable as query"),
     auto_parameters: bool = typer.Option(False, "--auto-parameters", help="Auto-configure parameters"),
     topic: str = typer.Option("general", "--topic", help="Search topic: general, news, finance"),
     search_depth: str = typer.Option("basic", "--search-depth", help="Search depth: basic, advanced"),
@@ -198,6 +193,17 @@ def search(
             os.chdir(original_cwd)
     
     try:
+        if use_env:
+            env_query = os.getenv("SEARCH_QUERY")
+            if env_query:
+                query = env_query
+            else:
+                console.print("[red]--use-env specified but SEARCH_QUERY environment variable not found.[/red]")
+                raise typer.Exit(1)
+        if not query:
+            console.print("[red]Query not provided.[/red]")
+            raise typer.Exit(1)
+
         key = get_api_key(api_key)
 
         # Parse include_answer and include_raw_content

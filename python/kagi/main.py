@@ -166,15 +166,27 @@ def get_api_key(api_key: Optional[str] = None) -> str:
 
 @app.command()
 def search(
-    query: str = typer.Argument(..., help="The search query"),
+    query: Optional[str] = typer.Argument(None, help="The search query"),
     limit: int = typer.Option(10, "--limit", help="Number of results"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="Kagi API key"),
     format: str = typer.Option("table", "--format", help="Output format: json, table, tree"),
+    use_env: bool = typer.Option(False, "--use-env", help="Use SEARCH_QUERY environment variable as query"),
 ):
     """
     Perform a general web search.
     """
     try:
+        if use_env:
+            env_query = os.getenv("SEARCH_QUERY")
+            if env_query:
+                query = env_query
+            else:
+                console.print("[red]--use-env specified but SEARCH_QUERY environment variable not found.[/red]")
+                raise typer.Exit(1)
+        if not query:
+            console.print("[red]Query not provided.[/red]")
+            raise typer.Exit(1)
+
         key = get_api_key(api_key)
         client = KagiClient(key)
         response = client.search(query, limit)
@@ -187,21 +199,12 @@ def search(
         if format == "json":
             console.print_json(json.dumps(response.model_dump(), indent=2))
         elif format == "table":
-            table = Table(title=f"Search Results for: {query}")
-            table.add_column("Type", style="dim", width=4)
-            table.add_column("Title", style="bold cyan")
-            table.add_column("URL", style="blue")
-            table.add_column("Snippet")
-
             if response.data:
-                for result in response.data:
-                    table.add_row(
-                        str(result.t),
-                        result.title or "No Title",
-                        result.url or "No URL",
-                        result.snippet or ""
-                    )
-            console.print(table)
+                for i, result in enumerate(response.data, 1):
+                    console.print(f"\n[bold]{i}. {result.title or 'No Title'}[/bold]")
+                    console.print(f"   [blue]{result.url or 'No URL'}[/blue]")
+                    if result.snippet:
+                        console.print(f"   [dim]{result.snippet}[/dim]")
             if not response.data and not response.error:
                  console.print("[yellow]No results found.[/yellow]")
 
@@ -222,15 +225,27 @@ def search(
 
 @app.command()
 def fastgpt(
-    query: str = typer.Argument(..., help="The query to answer"),
+    query: Optional[str] = typer.Argument(None, help="The query to answer"),
     cache: bool = typer.Option(True, "--cache/--no-cache", help="Use cache"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="Kagi API key"),
     format: str = typer.Option("panel", "--format", help="Output format: json, panel"),
+    use_env: bool = typer.Option(False, "--use-env", help="Use SEARCH_QUERY environment variable as query"),
 ):
     """
     Answer a query using FastGPT.
     """
     try:
+        if use_env:
+            env_query = os.getenv("SEARCH_QUERY")
+            if env_query:
+                query = env_query
+            else:
+                console.print("[red]--use-env specified but SEARCH_QUERY environment variable not found.[/red]")
+                raise typer.Exit(1)
+        if not query:
+            console.print("[red]Query not provided.[/red]")
+            raise typer.Exit(1)
+
         key = get_api_key(api_key)
         client = KagiClient(key)
         response = client.fastgpt(query, cache)
@@ -311,15 +326,27 @@ def summarize(
 
 @app.command()
 def enrich(
-    query: str = typer.Argument(..., help="The query to enrich"),
+    query: Optional[str] = typer.Argument(None, help="The query to enrich"),
     kind: str = typer.Option("web", "--kind", help="Type of enrichment: web or news"),
     api_key: Optional[str] = typer.Option(None, "--api-key", help="Kagi API key"),
     format: str = typer.Option("table", "--format", help="Output format: json, table"),
+    use_env: bool = typer.Option(False, "--use-env", help="Use SEARCH_QUERY environment variable as query"),
 ):
     """
     Get enriched content results (Teclis/TinyGem).
     """
     try:
+        if use_env:
+            env_query = os.getenv("SEARCH_QUERY")
+            if env_query:
+                query = env_query
+            else:
+                console.print("[red]--use-env specified but SEARCH_QUERY environment variable not found.[/red]")
+                raise typer.Exit(1)
+        if not query:
+            console.print("[red]Query not provided.[/red]")
+            raise typer.Exit(1)
+
         key = get_api_key(api_key)
         client = KagiClient(key)
         
