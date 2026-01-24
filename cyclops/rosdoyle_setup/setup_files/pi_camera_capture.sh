@@ -24,13 +24,22 @@ else
     AWB_OPT="--awbgains $AWBGAINS"
 fi
 
+# Handle rotation natively in rpicam-vid if possible
+# Note: rpicam-vid --rotation supports 0 and 180 on all sensors.
+# 90/270 might not be supported in hardware on all setups, but is still better handled there if allowed.
+# If ROTATION is not set, default to 0.
+ROTATION=${ROTATION:-0}
+
+# rpicam-vid command with native H.264 encoding (hardware accelerated)
+# Piped to ffmpeg for FLV encapsulation only (copy codec) to minimize CPU usage
 rpicam-vid -t 0 --width "$WIDTH" --height "$HEIGHT" --framerate "$FPS" \
     --bitrate "$BITRATE" --inline --nopreview --shutter "$SHUTTER" --gain "$GAIN" \
     $AWB_OPT --ev "$EV" --metering "$METERING" --saturation "$SATURATION" \
-    --denoise "$DENOISE" --brightness "$BRIGHTNESS" --contrast "$CONTRAST" -o - \
-    | ffmpeg -nostdin -f h264 -i - -vf "transpose=$ROTATION,scale=${WIDTH}:${HEIGHT}" \
-        -c:v libx264 -preset ultrafast -tune zerolatency -b:v ${BITRATE} -maxrate ${BITRATE} -bufsize $((BITRATE*2)) \
-        -r "$FPS" -g $((FPS*2)) -threads 2 -f flv "$RTMP_URL"
+    --denoise "$DENOISE" --brightness "$BRIGHTNESS" --contrast "$CONTRAST" \
+    --rotation "$ROTATION" -o - \
+    | ffmpeg -nostdin -f h264 -i - \
+        -c:v copy \
+        -f flv "$RTMP_URL"
 
 # If ffmpeg exits the script will exit; systemd will restart the service according to the unit file.
 
