@@ -1,0 +1,29 @@
+---
+# Install Tailscale VPN
+- name: Add Tailscale GPG key
+  get_url:
+    url: https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: '0644'
+
+- name: Add Tailscale repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main"
+    state: present
+    filename: tailscale
+
+- name: Install Tailscale
+  apt:
+    name: tailscale
+    state: present
+    update_cache: yes
+
+- name: Enable Tailscale service
+  systemd:
+    name: tailscaled
+    enabled: yes
+    state: started
+
+- name: Display Tailscale connection instructions
+  debug:
+    msg: "Tailscale installed! Connect by running: sudo tailscale up"

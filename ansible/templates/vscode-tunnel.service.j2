@@ -1,0 +1,16 @@
+[Unit]
+Description=VS Code Tunnel for {{ target_user }}
+After=network.target
+
+[Service]
+Type=simple
+User={{ target_user }}
+WorkingDirectory={{ user_home }}
+ExecStart={{ user_home }}/.vscode-cli/code tunnel --accept-server-license-terms
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

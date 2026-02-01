@@ -1,0 +1,31 @@
+---
+# Copy all zsh configuration files and other configs
+- name: Copy zsh support scripts
+  copy:
+    src: "{{ playbook_dir }}/../{{ item }}"
+    dest: "{{ user_home }}/dev/bin/{{ item }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  with_items:
+    - aliases.zsh
+    - custom_path.zsh
+    - constants.zsh
+    - functions.zsh
+    - colors.zsh
+    - autoload_environment.zsh
+  ignore_errors: yes
+
+- name: Copy modified .zshrc for remote device
+  copy:
+    src: "{{ playbook_dir }}/files/remote_zshrc"
+    dest: "{{ user_home }}/.zshrc"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+
+- name: Fix macOS paths in .zshrc (if any)
+  replace:
+    path: "{{ user_home }}/.zshrc"
+    regexp: '/Users/jadennation'
+    replace: '{{ user_home }}'

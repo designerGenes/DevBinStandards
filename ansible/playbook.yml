@@ -1,0 +1,79 @@
+---
+- name: Setup Linux Devices Base Configuration
+  hosts: all
+  become: yes
+  vars:
+    go_version: "1.23.4"
+    nvim_version: "0.10.4"
+    user_home: "/home/{{ ansible_user }}"
+    target_user: "{{ ansible_user }}"
+    code_server_version: "4.98.3"  # Update as needed
+    
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # === SYSTEM PACKAGES ===
+    - name: Install system dependencies
+      include_tasks: tasks/install_packages.yml
+
+    # === DIRECTORY SETUP ===
+    - name: Create dev/bin directory
+      file:
+        path: "{{ user_home }}/dev/bin"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    # === FILE COPYING ===
+    - name: Copy configuration files
+      include_tasks: tasks/copy_config_files.yml
+
+    # === ZSH SETUP ===
+    - name: Setup Zsh
+      include_tasks: tasks/setup_zsh.yml
+
+    # === NEOVIM SETUP ===
+    - name: Setup Neovim
+      include_tasks: tasks/setup_neovim.yml
+
+    # === DOCKER SETUP ===
+    - name: Setup Docker
+      include_tasks: tasks/setup_docker.yml
+
+    # === GOLANG SETUP ===
+    - name: Setup Golang and skate
+      include_tasks: tasks/setup_golang.yml
+
+    # === TAILSCALE SETUP ===
+    - name: Setup Tailscale
+      include_tasks: tasks/setup_tailscale.yml
+
+    # === PYTHON/UV SETUP ===
+    - name: Setup Python and UV
+      include_tasks: tasks/setup_python.yml
+
+    # === VS CODE SERVER SETUP ===
+    - name: Setup VS Code Server
+      include_tasks: tasks/setup_vscode_server.yml
+
+    # === SSH KEYS ===
+    - name: Setup SSH authorized keys
+      include_tasks: tasks/setup_ssh_keys.yml
+
+  handlers:
+    - name: Reboot system
+      reboot:
+        msg: "Rebooting for system changes"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+    
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes

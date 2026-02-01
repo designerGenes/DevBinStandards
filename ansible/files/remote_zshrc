@@ -1,0 +1,101 @@
+# Remote Zsh Configuration for Linux Devices
+# Simplified from local macOS .zshrc
+
+# === Colors ===
+if [ -f "$HOME/dev/bin/colors.zsh" ]; then
+    source "$HOME/dev/bin/colors.zsh"
+fi
+
+# Default machine color for prompt
+machine_color='%F{111}'
+reset_color='%f'
+
+# === Completion System ===
+autoload -Uz compinit && compinit
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'  # Case-insensitive completion
+
+# === Aliases ===
+if [ -f "$HOME/dev/bin/aliases.zsh" ]; then
+    source "$HOME/dev/bin/aliases.zsh"
+else
+    # Fallback aliases
+    alias ll='ls -l'
+    alias la='ls -la'
+    alias k='kubectl'
+    alias pip='python3 -m pip'
+    alias cat='batcat'  # bat is installed as batcat on Debian
+fi
+
+# === Functions ===
+if [ -f "$HOME/dev/bin/functions.zsh" ]; then
+    source "$HOME/dev/bin/functions.zsh"
+fi
+
+# === Custom Path ===
+if [ -f "$HOME/dev/bin/custom_path.zsh" ]; then
+    source "$HOME/dev/bin/custom_path.zsh"
+fi
+
+# === Constants ===
+if [ -f "$HOME/dev/bin/constants.zsh" ]; then
+    source "$HOME/dev/bin/constants.zsh"
+fi
+
+# === Environment Autoloading ===
+if [ -f "$HOME/dev/bin/autoload_environment.zsh" ]; then
+    source "$HOME/dev/bin/autoload_environment.zsh"
+fi
+
+# === History Settings ===
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh_history
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_FIND_NO_DUPS
+
+# === Environment Variables ===
+export EDITOR=nvim
+export VISUAL=nvim
+
+# PATH additions
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:/usr/local/go/bin:$HOME/go/bin"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.vscode-cli:$PATH"
+
+# === UV / Cargo ===
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
+# === Prompt ===
+PROMPT='[ %n @ '"${machine_color}"'%m'"${reset_color}"' ] %1~ > '
+
+# === Key Bindings ===
+bindkey '^U' backward-kill-line
+bindkey '^R' history-incremental-search-backward
+
+# === SSH Agent ===
+if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+    eval "$(ssh-agent -s)" > /dev/null
+fi
+
+# === FZF (if installed) ===
+if command -v fzf >/dev/null 2>&1; then
+    # FZF key bindings
+    [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && source /usr/share/doc/fzf/examples/key-bindings.zsh
+    [ -f /usr/share/doc/fzf/examples/completion.zsh ] && source /usr/share/doc/fzf/examples/completion.zsh
+fi
+
+# === Docker Completion ===
+if command -v docker >/dev/null 2>&1; then
+    if [ -f /usr/share/zsh/vendor-completions/_docker ]; then
+        fpath=(/usr/share/zsh/vendor-completions $fpath)
+    fi
+fi
+
+# === Welcome Message ===
+echo "🚀 Zsh loaded on $(hostname)"

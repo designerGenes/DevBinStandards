@@ -1,0 +1,120 @@
+---
+# Setup Neovim with Lua configuration
+- name: Check current Neovim version
+  shell: nvim --version | head -n 1
+  register: nvim_current_version
+  failed_when: false
+  changed_when: false
+
+- name: Download Neovim
+  get_url:
+    url: "https://github.com/neovim/neovim/releases/download/v{{ nvim_version }}/nvim-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}.tar.gz"
+    dest: "/tmp/nvim-linux.tar.gz"
+    timeout: 300
+  when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+- name: Remove old Neovim directory
+  file:
+    path: /opt/nvim
+    state: absent
+  when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+- name: Create Neovim directory
+  file:
+    path: /opt/nvim
+    state: directory
+  when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+- name: Extract Neovim
+  unarchive:
+    src: "/tmp/nvim-linux.tar.gz"
+    dest: /opt/nvim
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+  when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+- name: Symlink Neovim binary
+  file:
+    src: /opt/nvim/bin/nvim
+    dest: /usr/local/bin/nvim
+    state: link
+
+- name: Create Neovim config directory
+  file:
+    path: "{{ user_home }}/.config/nvim"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+
+- name: Copy Neovim init.lua if exists locally
+  copy:
+    src: "{{ playbook_dir }}/files/init.lua"
+    dest: "{{ user_home }}/.config/nvim/init.lua"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  ignore_errors: yes
+
+- name: Create default Neovim init.lua (if not copied)
+  copy:
+    dest: "{{ user_home }}/.config/nvim/init.lua"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+    force: no
+    content: |
+      -- Suppress nvim-lspconfig deprecation warning for Nvim 0.10
+      local _notify = vim.notify
+      vim.notify = function(msg, ...)
+        if type(msg) == "string" and msg:match("nvim%-lspconfig support for Nvim 0%.10") then
+          return
+        end
+        _notify(msg, ...)
+      end
+
+      -- Basic settings
+      vim.opt.number = true
+      vim.opt.relativenumber = true
+      vim.opt.expandtab = true
+      vim.opt.shiftwidth = 2
+      vim.opt.tabstop = 2
+      vim.opt.smartindent = true
+
+      -- Lazy.nvim plugin manager
+      local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+      if not vim.loop.fs_stat(lazypath) then
+        vim.fn.system({
+          "git",
+          "clone",
+          "--filter=blob:none",
+          "https://github.com/folke/lazy.nvim.git",
+          "--branch=stable",
+          lazypath,
+        })
+      end
+      vim.opt.rtp:prepend(lazypath)
+
+      -- Plugin setup
+      require("lazy").setup({
+        {
+          "nvim-tree/nvim-tree.lua",
+          config = function()
+            require("nvim-tree").setup()
+          end,
+        },
+        "neovim/nvim-lspconfig",
+        {
+          "nvim-treesitter/nvim-treesitter",
+          build = ":TSUpdate",
+          config = function()
+            local configs = require("nvim-treesitter.configs")
+            configs.setup({
+              ensure_installed = { "c", "lua", "vim", "vimdoc", "query", "python", "go", "bash" },
+              sync_install = false,
+              highlight = { enable = true },
+              indent = { enable = true },
+            })
+          end,
+        },
+      })

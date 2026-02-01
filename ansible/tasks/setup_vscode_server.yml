@@ -1,0 +1,46 @@
+---
+# Setup headless VS Code Server for remote tunneling
+- name: Check if VS Code CLI is already installed
+  stat:
+    path: "{{ user_home }}/.vscode-cli/code"
+  register: vscode_cli_installed
+
+- name: Download VS Code CLI
+  get_url:
+    url: "https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-{{ 'arm64' if ansible_architecture == 'aarch64' else 'x64' }}"
+    dest: "/tmp/vscode_cli.tar.gz"
+    timeout: 300
+  when: not vscode_cli_installed.stat.exists
+
+- name: Create VS Code CLI directory
+  file:
+    path: "{{ user_home }}/.vscode-cli"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+
+- name: Extract VS Code CLI
+  unarchive:
+    src: "/tmp/vscode_cli.tar.gz"
+    dest: "{{ user_home }}/.vscode-cli"
+    remote_src: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  when: not vscode_cli_installed.stat.exists
+
+- name: Add VS Code CLI to PATH
+  lineinfile:
+    path: "{{ user_home }}/.profile"
+    line: 'export PATH="$HOME/.vscode-cli:$PATH"'
+    create: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Create systemd service for VS Code tunnel (optional)
+  template:
+    src: "{{ playbook_dir }}/templates/vscode-tunnel.service.j2"
+    dest: "/etc/systemd/system/vscode-tunnel@{{ target_user }}.service"
+    mode: '0644'
+  notify: Reload systemd
+  when: false  # Set to true if you want to auto-start tunnel as a service

@@ -1,0 +1,30 @@
+---
+# Setup Python and UV package manager
+- name: Ensure pip is up to date
+  pip:
+    name: pip
+    state: latest
+    executable: pip3
+
+- name: Install uv package manager
+  become: yes
+  become_user: "{{ target_user }}"
+  shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+  args:
+    creates: "{{ user_home }}/.cargo/bin/uv"
+  environment:
+    HOME: "{{ user_home }}"
+
+- name: Ensure cargo/uv in PATH
+  lineinfile:
+    path: "{{ user_home }}/.profile"
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    create: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+- name: Source cargo env in zshrc (if not already)
+  lineinfile:
+    path: "{{ user_home }}/.zshrc"
+    line: '[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"'
+    create: no

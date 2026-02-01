@@ -1,0 +1,67 @@
+# Custom color prompt setup
+machine_color='%F{111}'
+reset_color='%f'
+
+# Completion: only once!
+autoload -Uz compinit && compinit
+
+# Aliases and functions
+alias k='kubectl'
+alias pip="python3 -m pip"
+
+# History settings
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh_history
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+
+# Path, completions, and other sources
+fpath=(/Users/jadennation/.docker/completions $fpath)
+
+# source <(tailscale completion zsh) # Disabled on remote
+source "$HOME/dev/bin/aliases.zsh"
+source "$HOME/dev/bin/custom_path.zsh"
+source "$HOME/dev/bin/constants.zsh"
+source "$HOME/dev/bin/functions.zsh"
+source "$HOME/dev/bin/colors.zsh"
+source "$HOME/dev/bin/autoload_environment.zsh"
+
+# if [[ -n $ZSH_VERSION ]] && [[ -t 1 ]]; then
+#   source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+# fi
+# test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
+# Ensure ssh-agent is running and key is added only once per session
+export SSH_KEY="$HOME/.ssh/id_westbankbankrupt"
+
+# Check if agent is running
+if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+  # echo "Starting ssh-agent..."
+  eval "$(ssh-agent -s)" > /dev/null
+fi
+
+# Check if key is already added
+# if ! ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$SSH_KEY" | awk '{print $2}')"; then
+#   echo "Adding SSH key..."
+#   ssh-add "$SSH_KEY"
+# fi
+
+# Prompt (set last)
+PROMPT='[ %n @ '"${machine_color}"'%m'"${reset_color}"' ] %1~ > '
+bindkey '^U' backward-kill-line
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# . "$HOME/.langflow/uv/env"
+
+# fpath+=~/.zfunc; autoload -Uz compinit; compinit
+# export PATH="/Users/jadennation/.pixi/bin:$PATH"
+export PATH="$PATH:/usr/local/go/bin"
+
+# source /Users/jadennation/DEV/bin/rg_templates.zsh
+# source <(kagiSearch --show-completion)

@@ -1,0 +1,54 @@
+---
+# Download and install Golang
+- name: Check if Go is already installed
+  stat:
+    path: /usr/local/go/bin/go
+  register: go_installed
+
+- name: Get current Go version
+  shell: /usr/local/go/bin/go version | awk '{print $3}' | sed 's/go//'
+  register: current_go_version
+  when: go_installed.stat.exists
+  changed_when: false
+  failed_when: false
+
+- name: Download Golang
+  get_url:
+    url: "https://go.dev/dl/go{{ go_version }}.linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}.tar.gz"
+    dest: "/tmp/go{{ go_version }}.tar.gz"
+    timeout: 300
+  when: not go_installed.stat.exists or (current_go_version.stdout | default('')) != go_version
+
+- name: Remove old Go installation
+  file:
+    path: /usr/local/go
+    state: absent
+  when: not go_installed.stat.exists or (current_go_version.stdout | default('')) != go_version
+
+- name: Extract Golang
+  unarchive:
+    src: "/tmp/go{{ go_version }}.tar.gz"
+    dest: /usr/local
+    remote_src: yes
+  when: not go_installed.stat.exists or (current_go_version.stdout | default('')) != go_version
+
+- name: Add Go to PATH in profile
+  lineinfile:
+    path: "{{ user_home }}/.profile"
+    line: 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin'
+    create: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+
+# Install skate (charm.sh note-taking app)
+- name: Install skate using go install
+  become: yes
+  become_user: "{{ target_user }}"
+  shell: |
+    export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
+    go install github.com/charmbracelet/skate@latest
+  args:
+    creates: "{{ user_home }}/go/bin/skate"
+  environment:
+    HOME: "{{ user_home }}"
+    GOPATH: "{{ user_home }}/go"

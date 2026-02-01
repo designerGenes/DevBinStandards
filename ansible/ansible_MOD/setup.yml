@@ -1,0 +1,267 @@
+---
+- name: Setup MindsOfDunce
+  hosts: minds_of_dunce
+  become: yes
+  vars:
+    go_version: "1.23.4"
+    nvim_version: "0.10.4"
+    user_home: "/home/jadennation"
+    target_user: "jadennation"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - curl
+          - git
+          - build-essential
+          - python3
+          - python3-pip
+          - python3-venv
+          - tree
+          - ca-certificates
+          - gnupg
+          - zsh
+        state: present
+
+    - name: Create dev/bin directory
+      file:
+        path: "{{ user_home }}/dev/bin"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: Copy support scripts
+      copy:
+        src: ../{{ item }}
+        dest: "{{ user_home }}/dev/bin/{{ item }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      with_items:
+        - aliases.zsh
+        - custom_path.zsh
+        - constants.zsh
+        - functions.zsh
+        - colors.zsh
+        - autoload_environment.zsh
+      ignore_errors: yes
+
+    - name: Copy full .zshrc
+      copy:
+        src: full_zshrc
+        dest: "{{ user_home }}/.zshrc"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+
+    - name: Fix macOS paths in .zshrc
+      replace:
+        path: "{{ user_home }}/.zshrc"
+        regexp: '/Users/jadennation'
+        replace: '{{ user_home }}'
+
+    - name: Change default shell to zsh
+      user:
+        name: "{{ target_user }}"
+        shell: /bin/zsh
+
+    # --- AI HAT+ Setup ---
+    - name: Enable PCIe Gen 3 in config.txt
+      lineinfile:
+        path: /boot/firmware/config.txt
+        regexp: '^dtparam=pciex1_gen='
+        line: 'dtparam=pciex1_gen=3'
+        state: present
+      notify: Reboot Raspberry Pi
+
+    - name: Remove Hailo-8 drivers (incorrect for this device)
+      apt:
+        name: hailo-all
+        state: absent
+
+    - name: Install Hailo-10 drivers and software
+      apt:
+        name: hailo-h10-all
+        state: present
+
+    # --- Docker Setup ---
+    - name: Create directory for Docker keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker's official GPG key
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+        $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+        tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker Engine
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: "{{ target_user }}"
+        groups: docker
+        append: yes
+
+    # --- Neovim Setup ---
+    - name: Check current Neovim version
+      shell: nvim --version | head -n 1
+      register: nvim_current_version
+      failed_when: false
+      changed_when: false
+
+    - name: Download Neovim
+      get_url:
+        url: "https://github.com/neovim/neovim/releases/download/v{{ nvim_version }}/nvim-linux-arm64.tar.gz"
+        dest: "/tmp/nvim-linux-arm64.tar.gz"
+        timeout: 300
+      when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+    - name: Extract Neovim
+      unarchive:
+        src: "/tmp/nvim-linux-arm64.tar.gz"
+        dest: /opt
+        remote_src: yes
+        extra_opts:
+          - --strip-components=1
+          - --transform=s/^nvim-linux-arm64/nvim/
+      # Note: The tarball structure for nvim-linux-arm64 usually contains a root folder 'nvim-linux-arm64'. 
+      # We want to extract it to /opt/nvim.
+      # The safe way is to extract to /opt and rename, or clear /opt/nvim first.
+      when: nvim_version not in (nvim_current_version.stdout | default(''))
+    
+    # Simpler approach for Neovim extraction to handle folder naming variants
+    - name: Remove old Neovim directory
+      file:
+        path: /opt/nvim
+        state: absent
+      when: nvim_version not in (nvim_current_version.stdout | default(''))
+      
+    - name: Create Neovim directory
+      file:
+        path: /opt/nvim
+        state: directory
+      when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+    - name: Extract Neovim Tarball
+      unarchive:
+        src: "/tmp/nvim-linux-arm64.tar.gz"
+        dest: /opt/nvim
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+      when: nvim_version not in (nvim_current_version.stdout | default(''))
+
+    - name: Symlink Neovim binary
+      file:
+        src: /opt/nvim/bin/nvim
+        dest: /usr/local/bin/nvim
+        state: link
+
+    - name: Create Neovim config directory
+      file:
+        path: "{{ user_home }}/.config/nvim"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: Configure Neovim (init.lua)
+      copy:
+        dest: "{{ user_home }}/.config/nvim/init.lua"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        content: |
+          -- Suppress nvim-lspconfig deprecation warning for Nvim 0.10
+          local _notify = vim.notify
+          vim.notify = function(msg, ...)
+            if type(msg) == "string" and msg:match("nvim%-lspconfig support for Nvim 0%.10") then
+              return
+            end
+            _notify(msg, ...)
+          end
+
+          local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+          if not vim.loop.fs_stat(lazypath) then
+            vim.fn.system({
+              "git",
+              "clone",
+              "--filter=blob:none",
+              "https://github.com/folke/lazy.nvim.git",
+              "--branch=stable",
+              lazypath,
+            })
+          end
+          vim.opt.rtp:prepend(lazypath)
+
+          require("lazy").setup({
+            {
+              "nvim-tree/nvim-tree.lua",
+              config = function()
+                require("nvim-tree").setup()
+              end,
+            },
+            "neovim/nvim-lspconfig",
+            {
+              "nvim-treesitter/nvim-treesitter",
+              build = ":TSUpdate",
+              config = function()
+                local configs = require("nvim-treesitter.configs")
+                configs.setup({
+                  ensure_installed = { "c", "lua", "vim", "vimdoc", "query", "python", "go" },
+                  sync_install = false,
+                  highlight = { enable = true },
+                  indent = { enable = true },
+                })
+              end,
+            },
+          })
+
+    # --- UV Setup ---
+    - name: Install uv
+      become: yes
+      become_user: "{{ target_user }}"
+      shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      args:
+        creates: "{{ user_home }}/.cargo/bin/uv"
+
+    - name: Ensure uv in PATH
+      lineinfile:
+        path: "{{ user_home }}/.profile"
+        line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+        create: yes
+
+  handlers:
+    - name: Reboot Raspberry Pi
+      reboot:
+        msg: "Rebooting to enable PCIe Gen 3 for AI HAT+"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami

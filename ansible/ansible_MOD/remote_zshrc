@@ -1,0 +1,39 @@
+# Custom color prompt setup
+machine_color='%F{111}'
+reset_color='%f'
+
+# Completion: only once!
+autoload -Uz compinit && compinit
+
+# Aliases and functions
+alias k='kubectl'
+alias pip="python3 -m pip"
+alias ll='ls -l'
+alias la='ls -la'
+
+# History settings
+HISTSIZE=100000
+SAVEHIST=100000
+HISTFILE=~/.zsh_history
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY
+
+# Environment
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:/usr/local/go/bin"
+
+# UV / Cargo
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
+# Prompt
+PROMPT='[ %n @ '"${machine_color}"'%m'"${reset_color}"' ] %1~ > '
+bindkey '^U' backward-kill-line
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# SSH Agent (Generic)
+if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+  eval "$(ssh-agent -s)" > /dev/null
+fi
