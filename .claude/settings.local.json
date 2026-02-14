@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tuist version:*)",
+      "Bash(pod:*)",
+      "Bash(docker:*)",
+      "Bash(xcbeautify:*)",
+      "Bash(swift --version:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun simctl list:*)",
+      "Bash(brew:*)",
+      "Bash(gh:*)",
+      "Bash(xcode-select:*)",
+      "Bash(xcrun xctest:*)",
+      "Bash(sw_vers:*)",
+      "Bash(java -version:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.tuist.dev)",
+      "Bash(git init:*)",
+      "Bash(/opt/homebrew/opt/openjdk/bin/java:*)",
+      "Bash(tuist install:*)",
+      "Bash(tuist generate:*)",
+      "Bash(xcrun xcodebuild:*)",
+      "Bash(JENKINS_PASS=\"a0f1835c79b74e34b9fc75a372bde8d9\")",
+      "Bash(COOKIE_JAR=\"/tmp/jenkins_cookies\")",
+      "Bash(CRUMB=\"ba1a8cfba5e7c919ff208e7ddb16429f7031e48791cafbe25e6a0978a1432f3c\")",
+      "Bash(__NEW_LINE_0cf121f06292d617__ curl -s -b \"$COOKIE_JAR\" -u \"admin:$JENKINS_PASS\" -H \"Jenkins-Crumb:$CRUMB\" --data-urlencode 'script=\nimport jenkins.model.*\nimport hudson.security.*\n\ndef instance = Jenkins.getInstance\\(\\)\ninstance.setInstallState\\(jenkins.install.InstallState.INITIAL_SETUP_COMPLETED\\)\n\ndef hudsonRealm = new HudsonPrivateSecurityRealm\\(false\\)\nhudsonRealm.createAccount\\(\"\"admin\"\", \"\"admin\"\"\\)\ninstance.setSecurityRealm\\(hudsonRealm\\)\n\ndef strategy = new FullControlOnceLoggedInAuthorizationStrategy\\(\\)\nstrategy.setAllowAnonymousRead\\(false\\)\ninstance.setAuthorizationStrategy\\(strategy\\)\n\ndef desc = instance.getDescriptor\\(\"\"jenkins.model.JenkinsLocationConfiguration\"\"\\)\ndesc.setUrl\\(\"\"http://localhost:8080/\"\"\\)\n\ninstance.save\\(\\)\nprintln\\(\"\"Jenkins setup complete\"\"\\)\n' http://localhost:8080/scriptText)",
+      "Bash(UDID=\"1F1C66C1-8871-4F73-9D77-75D5B7D4DFC8\":*)",
+      "Bash(XCTESTRUN=\"/Users/jadennation/DEV/ParallelTestDemo/DerivedData/Build/Products/Playground_iphonesimulator26.1-arm64-x86_64.xctestrun\")",
+      "Bash(ls:*)",
+      "Bash(xcrun simctl shutdown:*)",
+      "Bash(xcrun simctl delete:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRemove unsupported -parallel-testing-enabled flag for Xcode 26.1\n\nThe flag is not recognized by xcodebuild in Xcode 26.1 and causes\nthe command to print help text instead of running tests.\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}
