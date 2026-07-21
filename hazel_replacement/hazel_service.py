@@ -48,12 +48,22 @@ class TypeRule:
 
 
 @dataclass
+class DomainRule:
+    """Represents a domain-specific redirect rule."""
+    name: str
+    domain: str
+    extensions: List[str]
+    destination: str
+
+
+@dataclass
 class WatchRule:
     """Represents a watch directory rule."""
     name: str
     watch_directory: Path
     enabled: bool
     redirect_domains: List[str]
+    domain_rules: List[DomainRule]
     type_rules: List[TypeRule]
     redirect_destination: str
     source_directories: List[str]  # Relative paths where files are picked up from
@@ -129,6 +139,16 @@ def parse_watch_rules(config: Dict[str, Any]) -> List[WatchRule]:
                 destination=type_config.get('destination', type_name)
             ))
         
+        # Parse domain rules
+        domain_rules = []
+        for dr_name, dr_config in rule_config.get('domain_rules', {}).items():
+            domain_rules.append(DomainRule(
+                name=dr_name,
+                domain=dr_config.get('domain', ''),
+                extensions=[ext.lower() for ext in dr_config.get('extensions', [])],
+                destination=dr_config.get('destination', '')
+            ))
+        
         # Expand ~ in path
         watch_dir = Path(os.path.expanduser(rule_config['watch_directory']))
         
@@ -140,6 +160,7 @@ def parse_watch_rules(config: Dict[str, Any]) -> List[WatchRule]:
             watch_directory=watch_dir,
             enabled=rule_config.get('enabled', True),
             redirect_domains=rule_config.get('redirect_domains', []),
+            domain_rules=domain_rules,
             type_rules=type_rules,
             redirect_destination=rule_config.get('redirect_destination', 'tmp'),
             source_directories=source_dirs
@@ -322,19 +343,48 @@ def process_file(file_path: Path, rule: WatchRule, logger: logging.Logger) -> No
     # Check download source for domain redirect
     download_url = get_download_source(file_path)
     
-    if download_url and matches_redirect_domain(download_url, rule.redirect_domains):
+    if download_url:
         domain = extract_domain(download_url)
-        logger.info(f"Domain redirect match ({domain}): {file_path.name}")
-        dest_dir = rule.watch_directory / rule.redirect_destination
-        move_file(file_path, dest_dir, logger)
-        return
+        domain_lower = domain.lower() if domain else ""
+        ext = get_file_extension(file_path)
+
+        # 1. Check for specific domain rules first (more granular)
+        for dr in rule.domain_rules:
+            if dr.domain.lower() in domain_lower:
+                # Check if extensions match (if specified)
+                if not dr.extensions or ext in dr.extensions:
+                    logger.info(f"Domain rule match ({dr.name}): {file_path.name}")
+                    
+                    # Handle destination (expand ~ and handle relative paths)
+                    dest_path = Path(os.path.expanduser(dr.destination))
+                    if not dest_path.is_absolute():
+                        dest_dir = rule.watch_directory / dest_path
+                    else:
+                        dest_dir = dest_path
+                        
+                    move_file(file_path, dest_dir, logger)
+                    return
+
+        # 2. Check for general redirect domains (legacy behavior)
+        if matches_redirect_domain(download_url, rule.redirect_domains):
+            logger.info(f"Domain redirect match ({domain}): {file_path.name}")
+            dest_dir = rule.watch_directory / rule.redirect_destination
+            move_file(file_path, dest_dir, logger)
+            return
     
-    # Check file type rules
+    # 3. Check file type rules
     type_rule = find_matching_type_rule(file_path, rule.type_rules)
     
     if type_rule:
         logger.info(f"Type match ({type_rule.name}): {file_path.name}")
-        dest_dir = rule.watch_directory / type_rule.destination
+        
+        # Handle destination (expand ~ and handle relative paths)
+        dest_path = Path(os.path.expanduser(type_rule.destination))
+        if not dest_path.is_absolute():
+            dest_dir = rule.watch_directory / dest_path
+        else:
+            dest_dir = dest_path
+            
         move_file(file_path, dest_dir, logger)
         return
     
@@ -444,9 +494,21 @@ class HazelService:
             # Create redirect destination
             ensure_directory(rule.watch_directory / rule.redirect_destination)
             
+            # Create domain rule destinations
+            for domain_rule in rule.domain_rules:
+                dest_path = Path(os.path.expanduser(domain_rule.destination))
+                if not dest_path.is_absolute():
+                    ensure_directory(rule.watch_directory / dest_path)
+                else:
+                    ensure_directory(dest_path)
+            
             # Create type rule destinations
             for type_rule in rule.type_rules:
-                ensure_directory(rule.watch_directory / type_rule.destination)
+                dest_path = Path(os.path.expanduser(type_rule.destination))
+                if not dest_path.is_absolute():
+                    ensure_directory(rule.watch_directory / dest_path)
+                else:
+                    ensure_directory(dest_path)
     
     def _process_existing_files(self) -> None:
         """Process any existing files in watch directories on startup."""

@@ -1,40 +1,30 @@
 #!/bin/bash
-#
-# Hazel Replacement - Uninstallation Script
-# ==========================================
-# This script removes the Hazel Replacement service.
-#
-
 set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Paths
-CONFIG_DIR="$HOME/.hazel_replacement"
+CONFIG_DIR="$HOME/.config/sharktopus"
 LAUNCHD_DIR="$HOME/Library/LaunchAgents"
-PLIST_NAME="com.user.hazel-replacement.plist"
+PLIST_NAME="com.user.sharktopus.plist"
 PLIST_PATH="$LAUNCHD_DIR/$PLIST_NAME"
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║       Hazel Replacement - Uninstallation Script            ║${NC}"
+echo -e "${BLUE}║          Sharktopus - Uninstallation Script                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo
 
-# Stop the service
 echo -e "${YELLOW}→ Stopping service...${NC}"
-if launchctl list | grep -q "com.user.hazel-replacement"; then
+if launchctl list 2>/dev/null | grep -q "com.user.sharktopus"; then
     launchctl unload "$PLIST_PATH" 2>/dev/null || true
     echo -e "${GREEN}  ✓ Service stopped${NC}"
 else
     echo -e "${YELLOW}  → Service was not running${NC}"
 fi
 
-# Remove plist
 echo -e "${YELLOW}→ Removing launchd configuration...${NC}"
 if [ -f "$PLIST_PATH" ]; then
     rm "$PLIST_PATH"
@@ -43,7 +33,17 @@ else
     echo -e "${YELLOW}  → Plist file not found${NC}"
 fi
 
-# Ask about config removal
+echo -e "${YELLOW}→ Removing symlinks...${NC}"
+rm -f /usr/local/bin/sharktopus 2>/dev/null || true
+rm -f /usr/local/bin/sp 2>/dev/null || true
+echo -e "${GREEN}  ✓ Removed /usr/local/bin/sharktopus and /usr/local/bin/sp${NC}"
+
+echo -e "${YELLOW}→ Uninstalling uv tool...${NC}"
+if command -v uv &> /dev/null; then
+    uv tool uninstall sharktopus 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Uninstalled via uv${NC}"
+fi
+
 echo
 echo -e "${YELLOW}Do you want to remove configuration and logs? (y/N)${NC}"
 read -r response
@@ -61,6 +61,6 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║               Uninstallation Complete!                      ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo
-echo -e "The service has been removed."
-echo -e "Your watched files in ~/Downloads/drive have NOT been modified."
+echo -e "Sharktopus has been removed."
+echo -e "Your watched files have NOT been modified."
 echo

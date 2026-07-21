@@ -10,6 +10,31 @@ settings:
 
 # Watch rules - each rule defines a directory to watch and actions to take
 watch_rules:
+  - name: "Safe Pocket Log Organizer"
+    watch_directory: "/Users/jadennation/.safe_pocket/d7c3f7c7e250"
+    enabled: true
+    type_rules:
+      logs:
+        extensions:
+          - .log
+        destination: "logs"
+    redirect_destination: "tmp"
+
+  - name: "Downloads Organizer"
+    watch_directory: "~/Downloads"
+    enabled: true
+    domain_rules:
+      claude_ai:
+        domain: "claude.ai"
+        extensions:
+          - .md
+          - .json
+          - .yml
+          - .yaml
+        destination: "~/dev/output/Claude"
+    type_rules: {}
+    redirect_destination: "tmp"
+
   - name: "Downloads Drive Organizer"
     watch_directory: "~/Downloads/drive"
     enabled: true
@@ -24,6 +49,17 @@ watch_rules:
       - "k2s.cc"
       - "kshared.com"
       # Add more patterns here - partial matches work (e.g., "fb" matches "facebook.com")
+    
+    # Domain-specific rules with specific destinations and optional extensions
+    domain_rules:
+      claude_ai:
+        domain: "claude.ai"
+        extensions:
+          - .md
+          - .json
+          - .yml
+          - .yaml
+        destination: "~/dev/output/Claude"
     
     # File type rules - applied if no domain redirect matches
     type_rules:

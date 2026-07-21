@@ -232,7 +232,75 @@ conda() {
     conda "$@"
 }
 
-# Optional: Make 'mamba' trigger the same loading
-#mamba() {
-#    conda "$@"
-#}
+# Universal "Safe Run" for AI Agents
+# Usage: printf 'commands' | run_safe
+run_safe() {
+    # 1. Create a cross-platform temp file
+    # MacOS 'mktemp' behaves slightly differently than Linux
+    local tmp_script
+    tmp_script=$(mktemp -t ai_task_XXXXXX.sh)
+    
+    # 2. Capture stdin into the file
+    # This prevents the "Dangling HEREdoc" at the terminal level
+    cat > "$tmp_script"
+    
+    # 3. Detect the current shell for execution
+    local current_shell
+    current_shell=$(ps -p $$ -o comm= | sed 's/^-//')
+    
+    # 4. Execute and Cleanup
+    echo "--- Executing via $current_shell ---"
+    "$current_shell" "$tmp_script"
+    local exit_code=$?
+    
+    rm -f "$tmp_script"
+    return $exit_code
+}
+
+preexec() {
+    if [[ "$1" == *"<<EOF"* ]]; then
+        echo "ERROR: HEREdocs are disabled."
+    fi
+}
+
+# Increment folder and cd into it
+createNextTestFolder() {
+    local NEW_DIR
+    NEW_DIR=$(/Users/jadennation/.langflow/uv/uv run python3 /Users/jadennation/DEV/tmp/increment_folder.py "$@")
+    
+    if [ $? -eq 0 ] && [ -d "$NEW_DIR" ]; then
+        cd "$NEW_DIR"
+    fi
+}
+deSL() {
+  # Load config to find the to_deslop folder
+  local config_path="$HOME/.config/slop/config.yaml"
+  if [[ ! -f $config_path ]]; then
+    echo "⚠️ Config file not found at $config_path"
+    return 1
+  fi
+
+  # Extract the folder path (the value after the colon)
+  local folder=$(awk -F': ' '/to_deslop_folder/ {gsub(/^ *| *$/,"",$2); print $2}' "$config_path")
+  # Expand leading '~' to $HOME
+  folder=${folder/#\~/$HOME}
+
+  if [[ -z $folder || ! -d $folder ]]; then
+    echo "⚠️ to_deslop folder not found: $folder"
+    return 1
+  fi
+
+  # Find the most recently modified file in the folder (ignore directories)
+  local latest_file=$(ls -tp "$folder" | grep -v / | head -n 1)
+  if [[ -z $latest_file ]]; then
+    echo "⚠️ No files found in $folder"
+    return 1
+  fi
+
+  local full_path="$folder/$latest_file"
+  echo "deSL: deslopping $latest_file"
+  # Run slop with -d on the latest file using the correct binary path
+  "/Users/jadennation/.local/bin/slop" -d "$full_path"
+}
+
+
